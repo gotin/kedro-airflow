@@ -61,6 +61,11 @@ jobs:
     environment:
       CONDA_ENV_PY_VERSION: 3.8
 
+  build_39:
+    <<: *DEFAULT
+    environment:
+      CONDA_ENV_PY_VERSION: 3.9
+
 workflows:
   version: 2
   regular:
@@ -68,6 +73,7 @@ workflows:
       - build_36
       - build_37
       - build_38
+      - build_39
   daily:
     triggers:
       - schedule:
@@ -81,3 +87,4 @@ workflows:
       - build_36
       - build_37
       - build_38
+      - build_39

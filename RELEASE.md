@@ -1,7 +1,8 @@
 # Release 0.4.1
 
 ## Bugfix
-* Drop unnecessary dependency on apache-airflow
+* Drop unnecessary dependency on apache-airflow.
+* Added support for Python 3.9.
 
 ## Thanks for supporting contributions
 
