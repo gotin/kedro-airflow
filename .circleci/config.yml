@@ -31,7 +31,6 @@ jobs:
             make install-pip-setuptools
             pip install git+https://github.com/quantumblacklabs/kedro
             export AIRFLOW_GPL_UNIDECODE=yes
-            pip install -r requirements.txt
             pip install -r test_requirements.txt
             pre-commit install --install-hooks
             pre-commit install --hook-type pre-push
