@@ -31,18 +31,11 @@
 import os
 import shutil
 import stat
-import sys
 import tempfile
 from pathlib import Path
 
 from features.steps.sh_run import run
 from features.steps.util import create_new_venv
-
-NO_PYTHON38_TAG = "no_python38"
-
-
-def _is_python38(scenario):
-    return NO_PYTHON38_TAG in scenario.tags and sys.version_info[:2] == (3, 8)
 
 
 def before_scenario(context, scenario):  # pylint: disable=unused-argument
@@ -58,9 +51,6 @@ def before_scenario(context, scenario):  # pylint: disable=unused-argument
             print(res.stderr)
         assert res.returncode == 0
 
-    if _is_python38(scenario):
-        scenario.skip("Skip for Python38")
-        return
     # make a venv
     context.venv_dir = create_new_venv()
 
@@ -86,16 +76,8 @@ def before_scenario(context, scenario):  # pylint: disable=unused-argument
     context.env["PATH"] = path_sep.join(path)
 
     # pip install us
-    # resolve the requirements using pip-compile from pip-tools due to
-    # this bug in pip: https://github.com/pypa/pip/issues/988
     call([context.python, "-m", "pip", "install", "-U", "pip", "pip-tools"])
-    pip_compile = str(bin_dir / "pip-compile")
-    with tempfile.TemporaryDirectory() as tmpdirname:
-        reqs = Path("requirements.txt").read_text()
-        complied_reqs = Path(tmpdirname) / "requirements.txt"
-        complied_reqs.write_text(reqs)
-        call([pip_compile, str(complied_reqs)])
-        call([context.pip, "install", "-r", str(complied_reqs)])
+    call([context.pip, "install", "-r", "test_requirements.txt"])
     call([context.pip, "install", "."])
 
     # pylint: disable=unused-argument
@@ -104,8 +86,6 @@ def before_scenario(context, scenario):  # pylint: disable=unused-argument
 
 def after_scenario(context, scenario):
     # pylint: disable=unused-argument
-    if _is_python38(scenario):
-        return
     rmtree(str(context.temp_dir))
     rmtree(str(context.venv_dir))
 

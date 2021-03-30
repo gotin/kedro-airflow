@@ -9,6 +9,7 @@ from airflow.version import version
 from datetime import datetime, timedelta
 
 from kedro.framework.session import KedroSession
+from kedro.framework.project import configure_project
 
 
 class KedroOperator(BaseOperator):
@@ -31,6 +32,7 @@ class KedroOperator(BaseOperator):
         self.env = env
 
     def execute(self, context):
+        configure_project(self.package_name)
         with KedroSession.create(self.package_name,
                                  self.project_path,
                                  env=self.env) as session:
