@@ -27,12 +27,31 @@
 # limitations under the License.
 from pathlib import Path
 
+from kedro.framework.project import _ProjectPipelines
+from kedro.pipeline import Pipeline, node
+
 from kedro_airflow.plugin import commands
 
 
-def test_create_airflow_dag(cli_runner, mocker, metadata, session):
+def identity(arg):
+    return arg
+
+
+def test_create_airflow_dag(mocker, cli_runner, metadata):
     dag_file = Path.cwd() / "airflow_dags" / "hello_world_dag.py"
-    mocker.patch("kedro_airflow.plugin.KedroSession.create", return_value=session)
+    default_pipeline = Pipeline(
+        [node(identity, ["input"], ["output"]), node(identity, ["output"], ["final"])],
+        tags="pipeline",
+    )
+    _create_pipelines = {
+        "__default__": default_pipeline,
+    }
+    mock_pipelines = mocker.patch.object(
+        _ProjectPipelines,
+        "_get_pipelines_registry_callable",
+        return_value=_create_pipelines,
+    )
+    mocker.patch("kedro_airflow.plugin.pipelines", mock_pipelines)
     result = cli_runner.invoke(commands, ["airflow", "create"], obj=metadata)
     assert result.exit_code == 0
     assert str(dag_file) in result.output

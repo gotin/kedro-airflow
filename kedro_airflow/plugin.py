@@ -33,14 +33,14 @@ from pathlib import Path
 import click
 import jinja2
 from click import secho
-from kedro.framework.session import KedroSession
+from kedro.framework.project import pipelines
 from kedro.framework.startup import ProjectMetadata
 from slugify import slugify
 
 
 @click.group(name="Airflow")
 def commands():
-    """ Kedro plugin for running a project with Airflow """
+    """Kedro plugin for running a project with Airflow"""
     pass
 
 
@@ -70,7 +70,6 @@ def create(
     jinja_env.filters["slugify"] = slugify
     template = jinja_env.get_template("airflow_dag_template.j2")
 
-    project_path = metadata.project_path
     package_name = metadata.package_name
     dag_filename = f"{package_name}_dag.py"
 
@@ -78,13 +77,12 @@ def create(
     target_path = target_path / dag_filename
 
     target_path.parent.mkdir(parents=True, exist_ok=True)
-    with KedroSession.create(package_name, project_path, env=env) as session:
-        context = session.load_context()
-        pipeline = context.pipelines.get(pipeline_name)
+
+    pipeline = pipelines.get(pipeline_name)
 
     dependencies = defaultdict(list)
     for node, parent_nodes in pipeline.node_dependencies.items():
-        for parent in parent_nodes:
+        for parent in parent_nodes:  # pragma: no cover
             dependencies[parent].append(node)
 
     template.stream(
