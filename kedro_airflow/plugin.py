@@ -82,7 +82,7 @@ def create(
 
     dependencies = defaultdict(list)
     for node, parent_nodes in pipeline.node_dependencies.items():
-        for parent in parent_nodes:  # pragma: no cover
+        for parent in parent_nodes:
             dependencies[parent].append(node)
 
     template.stream(
