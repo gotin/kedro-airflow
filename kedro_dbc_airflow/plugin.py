@@ -25,7 +25,7 @@
 #
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" Kedro plugin for running a project with Airflow """
+""" Kedro plugin for running a project with Databricks-connect on Airflow """
 
 from collections import defaultdict
 from pathlib import Path
@@ -38,19 +38,19 @@ from kedro.framework.startup import ProjectMetadata
 from slugify import slugify
 
 
-@click.group(name="Airflow")
+@click.group(name="DBCAirflow")
 def commands():
-    """ Kedro plugin for running a project with Airflow """
+    """ Kedro plugin for running a project with Databricks-connect & Airflow """
     pass
 
 
-@commands.group(name="airflow")
-def airflow_commands():
-    """Run project with Airflow"""
+@commands.group(name="dbcaf")
+def dbcaf_commands():
+    """Run project with Databricks-connect & Airflow"""
     pass
 
 
-@airflow_commands.command()
+@dbcaf_commands.command()
 @click.option("-p", "--pipeline", "pipeline_name", default="__default__")
 @click.option("-e", "--env", default="local")
 @click.option(
@@ -60,15 +60,24 @@ def airflow_commands():
     type=click.Path(writable=True, resolve_path=True, file_okay=False),
     default="./airflow_dags/",
 )
+@click.option(
+    "-j",
+    "--template-file",
+    "template_file",
+    default="dbc_af_dag_template.j2",
+)
 @click.pass_obj
 def create(
-    metadata: ProjectMetadata, pipeline_name, env, target_path
+    metadata: ProjectMetadata, pipeline_name, env, target_path, template_file,
 ):  # pylint: disable=too-many-locals
     """Create an Airflow DAG for a project"""
-    loader = jinja2.FileSystemLoader(str(Path(__file__).parent))
+    template_path = str(Path(__file__).parent)
+    loader = jinja2.FileSystemLoader(template_path)
+    print(f"{template_path=}")
+
     jinja_env = jinja2.Environment(autoescape=True, loader=loader, lstrip_blocks=True)
     jinja_env.filters["slugify"] = slugify
-    template = jinja_env.get_template("airflow_dag_template.j2")
+    template = jinja_env.get_template(template_file)
 
     project_path = metadata.project_path
     package_name = metadata.package_name
