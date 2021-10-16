@@ -26,8 +26,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """ Kedro plugin for running a project with Databricks-connect on Airflow """
-
+import os
+import shutil
 from collections import defaultdict
+from distutils.dir_util import copy_tree
 from pathlib import Path
 
 import click
@@ -36,6 +38,9 @@ from click import secho
 from kedro.framework.session import KedroSession
 from kedro.framework.startup import ProjectMetadata
 from slugify import slugify
+
+CONTEXT_FOR_DBC_AIRFLOW_FILEPATH = os.path.join(
+    str(Path(__file__).parent), "context.py")
 
 
 @click.group(name="DBCAirflow")
@@ -75,7 +80,10 @@ def create(
     loader = jinja2.FileSystemLoader(template_path)
     print(f"{template_path=}")
 
-    jinja_env = jinja2.Environment(autoescape=True, loader=loader, lstrip_blocks=True)
+    jinja_env = jinja2.Environment(
+        autoescape=True,
+        loader=loader,
+        lstrip_blocks=True)
     jinja_env.filters["slugify"] = slugify
     template = jinja_env.get_template(template_file)
 
@@ -84,9 +92,9 @@ def create(
     dag_filename = f"{package_name}_dag.py"
 
     target_path = Path(target_path)
-    target_path = target_path / dag_filename
+    target_dag_filepath = target_path / dag_filename
 
-    target_path.parent.mkdir(parents=True, exist_ok=True)
+    target_dag_filepath.parent.mkdir(parents=True, exist_ok=True)
     with KedroSession.create(package_name, project_path, env=env) as session:
         context = session.load_context()
         pipeline = context.pipelines.get(pipeline_name)
@@ -103,11 +111,49 @@ def create(
         pipeline_name=pipeline_name,
         package_name=package_name,
         pipeline=pipeline,
-    ).dump(str(target_path))
+    ).dump(str(target_dag_filepath))
+
+    # package name directory in dags directory
+    dags_kedro_conf_dirpath = os.path.join(
+        target_path, "kedro_conf", package_name)
+    os.makedirs(dags_kedro_conf_dirpath, exist_ok=True)
+
+    dags_logs_dirpath = os.path.join(dags_kedro_conf_dirpath, "logs")
+    os.makedirs(dags_logs_dirpath, exist_ok=True)
+
+    # conf directory
+    dags_conf_dirpath = os.path.join(dags_kedro_conf_dirpath, "conf")
+    os.makedirs(dags_conf_dirpath, exist_ok=True)
+    copy_tree("conf", dags_conf_dirpath)
+
+    # python source code files
+    dags_package_dirpath = os.path.join(target_path, package_name)
+    os.makedirs(dags_package_dirpath, exist_ok=True)
+    package_dirpath = os.path.join("src", package_name)
+    for path in Path(package_dirpath).glob("**/**"):
+        if path.is_dir() and not str(path).startswith("__"):
+            src_path = str(path)
+            dest_path = os.path.join(
+                src_path.replace(
+                    package_dirpath,
+                    dags_package_dirpath))
+            os.makedirs(dest_path, exist_ok=True)
+    src_context_path = os.path.join(package_dirpath, "context.py")
+    for path in Path(package_dirpath).glob("**/*.py"):
+        src_path = str(path)
+        dest_path = os.path.join(
+            src_path.replace(
+                package_dirpath,
+                dags_package_dirpath))
+        if src_path == src_context_path:
+            shutil.copy(CONTEXT_FOR_DBC_AIRFLOW_FILEPATH, dest_path)
+        else:
+            shutil.copy(src_path, dest_path)
+    context_filepath = f""
 
     secho("")
     secho("An Airflow DAG has been generated in:", fg="green")
-    secho(str(target_path))
+    secho(str(target_dag_filepath))
     secho("This file should be copied to your Airflow DAG folder.", fg="yellow")
     secho(
         "The Airflow configuration can be customized by editing this file.", fg="green"

@@ -9,7 +9,7 @@ from airflow.models import BaseOperator
 from airflow.utils.decorators import apply_defaults
 from airflow.version import version
 from datetime import datetime, timedelta
-
+from urllib.parse import urlparse
 from kedro.framework.session import KedroSession
 from kedro.framework.project import configure_project
 from airflow.providers.databricks.hooks.databricks import DatabricksHook
@@ -105,8 +105,8 @@ class KedroOperator(BaseOperator):
 # Kedro settings required to run your pipeline
 env = "{{ env }}"
 pipeline_name = "{{ pipeline_name }}"
-project_path = Path.cwd()
 package_name = "{{ package_name }}"
+project_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "kedro_conf", package_name)
 
 # Default settings applied to all tasks
 default_args = {
@@ -144,4 +144,4 @@ with DAG(
     {%- for child in child_nodes %}
     tasks["{{ parent_node.name | safe | slugify }}"] >> tasks["{{ child.name | safe | slugify }}"]
     {%- endfor -%}
-    {%- endfor -%}
+    {% endfor -%}
